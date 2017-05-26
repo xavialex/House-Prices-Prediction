@@ -133,13 +133,14 @@ y_pred2 = lin_reg.predict(X_train2)
 
 # Fitting Polynomial Regression to the dataset
 from sklearn.preprocessing import PolynomialFeatures
-poly_reg = PolynomialFeatures(degree = 2)
+poly_reg = PolynomialFeatures(degree = 2) # Muy mal, probar con SGD?
 X_poly = poly_reg.fit_transform(X_train1)
+X_poly2 = poly_reg.fit_transform(X_train2)
 poly_reg.fit(X_poly, y_train1)
 lin_reg = LinearRegression()
 lin_reg.fit(X_poly, y_train1)
-y_pred1 = lin_reg.predict(X_train1)
-y_pred2 = lin_reg.predict(X_train2)
+y_pred1 = lin_reg.predict(X_poly)
+y_pred2 = lin_reg.predict(X_poly2)
 
 
 # Evaluating the model
@@ -172,9 +173,3 @@ plt.title('Truth or Bluff (Polynomial Regression)')
 plt.xlabel('Position level')
 plt.ylabel('Salary')
 plt.show()
-
-# Predicting a new result with Linear Regression
-lin_reg.predict(6.5)
-
-# Predicting a new result with Polynomial Regression
-lin_reg_2.predict(poly_reg.fit_transform(6.5))
