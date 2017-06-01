@@ -14,6 +14,12 @@ y = training_set.iloc[:, -1].values
 X_test = pd.read_csv('Data/test.csv')
 X = X_train.append(X_test)
 
+continuous_features = ['LotFrontage', 'LotArea', 'MasVnrArea', 'BsmtFinSF1', 'BsmtFinSF2', 
+                       'BsmtUnfSF', 'TotalBsmtSF', '1stFlrSF', '2ndFlrSF', 
+                       'LowQualFinSF', 'GrLivArea', 'GarageArea', 'WoodDeckSF', 
+                       'OpenPorchSF', 'EnclosedPorch', '3SsnPorch', 
+                       'ScreenPorch', 'PoolArea', 'MiscVal']
+
 # Filling null values
 """
 from sklearn.preprocessing import Imputer
@@ -23,6 +29,11 @@ imp_median = Imputer(missing_values="NaN", strategy='median', axis = 0)
 """
 
 X.loc[:, 'LotFrontage'] = X.loc[:, 'LotFrontage'].fillna(X.loc[:, 'LotFrontage'].mean())
+X.loc[:, 'BsmtFinSF1'] = X.loc[:, 'BsmtFinSF1'].fillna(X.loc[:, 'BsmtFinSF1'].mean())
+X.loc[:, 'BsmtFinSF2'] = X.loc[:, 'BsmtFinSF2'].fillna(X.loc[:, 'BsmtFinSF2'].mean())
+X[continuous_features] = X[continuous_features].fillna(X[continuous_features].mean())
+a = X[continuous_features].fillna(X[continuous_features].mean())
+
 X.loc[:, 'Alley'] = X.loc[:, 'Alley'].fillna(X.loc[:, 'Alley'].value_counts().idxmax()) # Lots of NaN's, consider removing
 X.loc[:, 'Electrical'] = X.loc[:, 'Electrical'].fillna(X.loc[:, 'Electrical'].value_counts().idxmax())
 # All other NaN's are actual values, so they need to be converted
@@ -33,8 +44,7 @@ X.loc[:, 'MasVnrArea'] = X.loc[:, 'MasVnrArea'].replace('i', 0)
 X = pd.get_dummies(X, drop_first=True,
                            columns=['MSSubClass', 'MSZoning', 'Street', 'Alley',
                                    'LotShape', 'LandContour', 'Utilities', 
-                                   'LotConfig', 'LandSlope', 'LandSlope', 
-                                   'LandSlope', 'LandSlope', 'Neighborhood', 
+                                   'LotConfig', 'LandSlope', 'Neighborhood', 
                                    'Condition1', 'Condition2', 'BldgType', 
                                    'HouseStyle', 'OverallQual', 'OverallCond', 
                                    'YearBuilt', 'YearRemodAdd', 'RoofStyle', 
@@ -42,14 +52,19 @@ X = pd.get_dummies(X, drop_first=True,
                                    'MasVnrType', 'ExterQual', 'ExterCond', 
                                    'Foundation', 'BsmtQual', 'BsmtCond', 
                                    'BsmtExposure', 'BsmtFinType1', 'BsmtFinType2', 
-                                   'Heating', 'MSSubClass', 'HeatingQC', 
-                                   'CentralAir', 'Electrical', 'KitchenQual', 
-                                   'Functional', 'FireplaceQu', 'GarageType', 
+                                   'Heating', 'HeatingQC', 'CentralAir', 
+                                   'Electrical', 'BsmtFullBath', 'BsmtHalfBath', 
+                                   'FullBath', 'HalfBath', 'BedroomAbvGr', 
+                                   'KitchenAbvGr', 'KitchenQual', 'TotRmsAbvGrd', 
+                                   'Functional', 'Fireplaces', 'FireplaceQu', 
                                    'GarageType', 'GarageYrBlt', 'GarageFinish', 
-                                   'GarageQual', 'GarageCond', 'PavedDrive', 
-                                   'PoolQC', 'Fence', 'MiscFeature', 
-                                   'MoSold', 'YrSold', 'SaleType',
-                                   'SaleCondition'])
+                                   'GarageCars', 'GarageQual', 'GarageCond', 
+                                   'PavedDrive', 'PoolQC', 'Fence', 'MiscFeature', 
+                                   'MoSold', 'YrSold', 'SaleType', 'SaleCondition'])
+
+# Feature Scaling
+from sklearn.preprocessing import StandardScaler
+X[continuous_features] = StandardScaler().fit_transform(X[continuous_features])
 
 # Splitting into training examples and test examples
 X_train = X.iloc[:1460, :]
@@ -118,11 +133,17 @@ X_train1, X_train2, y_train1, y_train2 = train_test_split(X_train, y, test_size 
 X_train1 = X_train1.values
 X_train2 = X_train2.values
 
-# Feature Scaling
-"""from sklearn.preprocessing import StandardScaler
-sc_X = StandardScaler()
-X_train = sc_X.fit_transform(X_train)
-X_test = sc_X.transform(X_test)"""
+# Fitting SVR
+from sklearn.svm import SVR
+import datetime
+print(datetime.datetime.now())
+svr_poly = SVR(kernel='poly', degree=3)
+svr_rbf = SVR(kernel='rbf')
+print(datetime.datetime.now())
+y_poly1 = svr_poly.fit(X_train1, y_train1).predict(X_train1)
+y_poly2 = svr_poly.fit(X_train1, y_train1).predict(X_train2)
+y_rbf1 = svr_rbf.fit(X_train1.loc[:, 'LotArea'].to_frame(), y_train1).predict(X_train1.loc[:, 'LotArea'].to_frame())
+y_rbf2 = svr_rbf.fit(X_train1, y_train1).predict(X_train2)
 
 # Fitting Linear Regression to the dataset
 from sklearn.linear_model import LinearRegression
@@ -133,7 +154,7 @@ y_pred2 = lin_reg.predict(X_train2)
 
 # Fitting Polynomial Regression to the dataset
 from sklearn.preprocessing import PolynomialFeatures
-poly_reg = PolynomialFeatures(degree = 2) # Muy mal, probar con SGD?
+poly_reg = PolynomialFeatures(degree = 2) # Muy mal comportamiento
 X_poly = poly_reg.fit_transform(X_train1)
 X_poly2 = poly_reg.fit_transform(X_train2)
 poly_reg.fit(X_poly, y_train1)
@@ -145,6 +166,8 @@ y_pred2 = lin_reg.predict(X_poly2)
 
 # Evaluating the model
 from sklearn.metrics import r2_score
+R_sq1 = r2_score(y_train1, y_rbf1)
+R_sq2 = r2_score(y_train2, y_rbf2)
 R_sq1 = r2_score(y_train1, y_pred1)
 R_sq2 = r2_score(y_train2, y_pred2)
 
@@ -155,6 +178,12 @@ plt.title('Truth or Bluff (Linear Regression)')
 plt.xlabel('Position level')
 plt.ylabel('Salary')
 plt.show()
+
+""" Diario de resultados:
+    La regresión lineal es el algoritmo que mejor funciona: R^2 para test de 0.3865
+    Ni SVR con kernel rbf ni regresiones polinómicas se ajustan siquiera a los ejemplos de entrenamiento
+    ¿Qué va mal?
+"""
 
 # Visualising the Polynomial Regression results
 plt.scatter(X, y, color = 'red')
