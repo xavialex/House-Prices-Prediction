@@ -13,13 +13,12 @@ X_train = training_set.iloc[:, :-1]
 y = training_set.iloc[:, -1].values
 X_test = pd.read_csv('Data/test.csv')
 X = X_train.append(X_test)
-X.update(X.drop('Id', axis=1, inplace=True))
 
-continuous_features = ['LotFrontage', 'LotArea', 'MasVnrArea', 'BsmtFinSF1', 'BsmtFinSF2', 
-                       'BsmtUnfSF', 'TotalBsmtSF', '1stFlrSF', '2ndFlrSF', 
-                       'LowQualFinSF', 'GrLivArea', 'GarageArea', 'WoodDeckSF', 
-                       'OpenPorchSF', 'EnclosedPorch', '3SsnPorch', 
-                       'ScreenPorch', 'PoolArea', 'MiscVal']
+continuous_features = ['LotFrontage', 'LotArea', 'MasVnrArea', 'BsmtFinSF1', 
+                       'BsmtFinSF2', 'BsmtUnfSF', 'TotalBsmtSF', '1stFlrSF', 
+                       '2ndFlrSF', 'LowQualFinSF', 'GrLivArea', 'GarageArea', 
+                       'WoodDeckSF', 'OpenPorchSF', 'EnclosedPorch', 
+                       '3SsnPorch', 'ScreenPorch', 'PoolArea', 'MiscVal']
 
 categorical_features = ['MSSubClass', 'MSZoning', 'Street', 'Alley', 'LotShape', 
                         'LandContour', 'Utilities', 'LotConfig', 'LandSlope', 
@@ -49,28 +48,6 @@ X.loc[:, 'MasVnrArea'] = X.loc[:, 'MasVnrArea'].replace('i', 0)
 
 X = pd.get_dummies(X, drop_first=True, columns=categorical_features)
 
-
-X = pd.get_dummies(X, drop_first=True,
-                           columns=['MSSubClass', 'MSZoning', 'Street', 'Alley',
-                                   'LotShape', 'LandContour', 'Utilities', 
-                                   'LotConfig', 'LandSlope', 'Neighborhood', 
-                                   'Condition1', 'Condition2', 'BldgType', 
-                                   'HouseStyle', 'OverallQual', 'OverallCond', 
-                                   'YearBuilt', 'YearRemodAdd', 'RoofStyle', 
-                                   'RoofMatl', 'Exterior1st', 'Exterior2nd', 
-                                   'MasVnrType', 'ExterQual', 'ExterCond', 
-                                   'Foundation', 'BsmtQual', 'BsmtCond', 
-                                   'BsmtExposure', 'BsmtFinType1', 'BsmtFinType2', 
-                                   'Heating', 'HeatingQC', 'CentralAir', 
-                                   'Electrical', 'BsmtFullBath', 'BsmtHalfBath', 
-                                   'FullBath', 'HalfBath', 'BedroomAbvGr', 
-                                   'KitchenAbvGr', 'KitchenQual', 'TotRmsAbvGrd', 
-                                   'Functional', 'Fireplaces', 'FireplaceQu', 
-                                   'GarageType', 'GarageYrBlt', 'GarageFinish', 
-                                   'GarageCars', 'GarageQual', 'GarageCond', 
-                                   'PavedDrive', 'PoolQC', 'Fence', 'MiscFeature', 
-                                   'MoSold', 'YrSold', 'SaleType', 'SaleCondition'])
-
 # Feature Scaling
 from sklearn.preprocessing import StandardScaler
 X[continuous_features] = StandardScaler().fit_transform(X[continuous_features])
@@ -78,6 +55,9 @@ X[continuous_features] = StandardScaler().fit_transform(X[continuous_features])
 # Splitting into training examples and test examples
 X_train = X.iloc[:1460, :]
 X_test = X.iloc[1460:, :]
+
+# Removing Id column
+X_train.update(X.drop('Id', axis=1, inplace=True))
 
 # Splitting the dataset into the Training set and Test set
 from sklearn.model_selection import train_test_split
@@ -112,6 +92,12 @@ clf = clf.fit(X_train1, y_train1)
 a = clf.predict(X_train1)
 b = clf.predict(X_train2)
 
+# Fitting Random Forest Regressor
+from sklearn.ensemble import RandomForestRegressor
+regr_rf = RandomForestRegressor().fit(X_train1, y_train1)
+y_pred1 = regr_rf.predict(X_train1)
+y_pred2 = regr_rf.predict(X_train2)
+# R^2 en test de 0.86
 
 # Fitting Linear Regression to the dataset
 from sklearn.linear_model import LinearRegression
@@ -123,7 +109,7 @@ y_pred2 = lin_reg.predict(X_train2)
 # Fitting Polynomial Regression to the dataset
 from sklearn.preprocessing import PolynomialFeatures
 poly_reg = PolynomialFeatures(degree = 2) # Muy mal comportamiento
-#0 Idea, expandir polinómicamente sólo las vbles continuas, en proceso, ¿cómo le agrego luego las discretas?
+# Idea, expandir polinómicamente sólo las vbles continuas, en proceso, ¿cómo le agrego luego las discretas?
 X_poly = poly_reg.fit_transform(X.loc[:, continuous_features])
 X_poly = X.loc[:, categorical_features].join(pd.DataFrame(X_poly))
 X_poly = pd.get_dummies(X_poly, drop_first=True, columns=categorical_features)
@@ -176,20 +162,9 @@ R_sq2 = r2_score(y_train2, y_pred2)
 plt.scatter(training_set.loc[:, 'LotFrontage'], y)
 plt.scatter(training_set.loc[:, 'LotArea'], y)
 
-
-plt.scatter(X, y, color = 'red')
-plt.plot(X, lin_reg_2.predict(poly_reg.fit_transform(X)), color = 'blue')
-plt.title('Truth or Bluff (Polynomial Regression)')
-plt.xlabel('Position level')
-plt.ylabel('Salary')
-plt.show()
-
-# Visualising the Polynomial Regression results (for higher resolution and smoother curve)
-X_grid = np.arange(min(X), max(X), 0.1)
-X_grid = X_grid.reshape((len(X_grid), 1))
-plt.scatter(X, y, color = 'red')
-plt.plot(X_grid, lin_reg_2.predict(poly_reg.fit_transform(X_grid)), color = 'blue')
-plt.title('Truth or Bluff (Polynomial Regression)')
-plt.xlabel('Position level')
-plt.ylabel('Salary')
-plt.show()
+# Writting the predictions
+submission = pd.DataFrame(columns=['Id', 'SalePrice'])
+submission.iloc[:, 0] = X_test.loc[:, 'Id']
+regr_rf = RandomForestRegressor().fit(X_train, y) # Entrenar con todos los ejemplos da peores resultados!!!
+submission.iloc[:, 1] = regr_rf.predict(X_test)
+df_csv = submission.to_csv('Random Forest Regressor Submission.csv', index=False)
