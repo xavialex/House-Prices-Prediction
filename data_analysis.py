@@ -6,6 +6,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
+import seaborn as sns
 
 # Importing the dataset
 training_set = pd.read_csv('Data/train.csv')
@@ -36,6 +37,74 @@ categorical_features = ['MSSubClass', 'MSZoning', 'Street', 'Alley', 'LotShape',
                         'PoolQC', 'Fence', 'MiscFeature', 'MoSold', 'YrSold', 
                         'SaleType', 'SaleCondition']
 
+############################### DATA ANALYSYS #####################################
+# Understanding the dependant variable: SaleType
+training_set['SalePrice'].describe()
+sns.distplot(training_set['SalePrice'])
+print("Skewness: %f" % training_set['SalePrice'].skew())
+print("Kurtosis: {:f}".format(training_set['SalePrice'].kurt()))
+
+# Some plots about SalePrice relation with other interesting continuous variables
+# scatter plot grlivarea/saleprice
+data = pd.concat([training_set['SalePrice'], training_set['GrLivArea']], axis=1)
+data.plot.scatter(x='GrLivArea', y='SalePrice', ylim=(0, 800000)) # Strong linear relationship
+
+# scatter plot totalbsmtsf/saleprice
+data = pd.concat([training_set['SalePrice'], training_set['TotalBsmtSF']], axis=1)
+data.plot.scatter(x='TotalBsmtSF', y='SalePrice', ylim=(0, 800000))
+
+# Some plots about SalePrice relation with other interesting categorical variables
+# box plot overallqual/saleprice
+data = pd.concat([training_set['SalePrice'], training_set['OverallQual']], axis=1)
+f, ax = plt.subplots(figsize=(8, 6))
+fig = sns.boxplot(x='OverallQual', y="SalePrice", data=data)
+fig.axis(ymin=0, ymax=800000)
+
+# box plot YearBuilt/saleprice
+data = pd.concat([training_set['SalePrice'], training_set['YearBuilt']], axis=1)
+f, ax = plt.subplots(figsize=(16, 8))
+fig = sns.boxplot(x='YearBuilt', y="SalePrice", data=data)
+fig.axis(ymin=0, ymax=800000);
+plt.xticks(rotation=90);
+
+# Correlation matrix
+corrmat = training_set.corr()
+f, ax = plt.subplots(figsize=(12, 9))
+sns.heatmap(corrmat, vmax=.8, square=True);
+# Análisis visual rápido de las relaciones entre variables
+# Llama la atención la relación entre TotalBsmtSF y 1stFlrSF, así como la de GarageX
+
+# SalePrice correlation matrix (ampliación del anterior)
+k = 10 # Number of variables for heatmap
+cols = corrmat.nlargest(k, 'SalePrice')['SalePrice'].index
+cm = np.corrcoef(training_set[cols].values.T)
+sns.set(font_scale=1.25)
+hm = sns.heatmap(cm, cbar=True, annot=True, square=True, fmt='.2f', annot_kws={'size': 10}, yticklabels=cols.values, xticklabels=cols.values)
+plt.show()
+'''Conclusiones
+    - OverallQual, GrLivArea y TotalBsmtSF están fuertemente relacionadas con SalePrice
+    - GarageCars y GarageArea presentan una gran correlación. Se supone que son proporcionales, así que se puede obviar una de ellas
+    - Lo mismo para TotalBsmtSF y 1stFloor
+    - lo mismo para TotRmsAbvGrd y GrLivArea
+'''
+
+# Diagramas de puntos de relación entre varias variables
+sns.set()
+cols = ['SalePrice', 'OverallQual', 'GrLivArea', 'GarageCars', 'TotalBsmtSF', 'FullBath', 'YearBuilt']
+sns.pairplot(training_set[cols], size = 2.5)
+plt.show()
+
+# Missing Data
+total = training_set.isnull().sum().sort_values(ascending=False)
+percent = (training_set.isnull().sum()/training_set.isnull().count()).sort_values(ascending=False)
+missing_data = pd.concat([total, percent], axis=1, keys=['Total', 'Percent'])
+missing_data.head(20)
+# Se muestran ordenadas las variables con mayor número de datos vacíos
+# Se establece eliminar todas que presenten más de un 15% de campos vacíos, como PoolQC, MiscFeature y Alley
+
+################################# END ANALYSYS ######################################
+
+
 # Filling null values
 X[continuous_features] = X[continuous_features].fillna(X[continuous_features].mean())
 
@@ -64,6 +133,52 @@ from sklearn.model_selection import train_test_split
 X_train1, X_train2, y_train1, y_train2 = train_test_split(X_train, y, test_size = 0.2, random_state = 0)
 X_train1 = X_train1.values
 X_train2 = X_train2.values
+
+# Importing the Keras libraries and packages
+import keras
+from keras.models import Sequential
+from keras.layers import Dense
+
+# Initialising the ANN
+classifier = Sequential()
+
+# Se usará una función de activación rectifier para las capas internas y una función sigmoidea para la última ( se quiere saber la probabilidad de que se abandone el banco)
+
+# Adding the input layer and the first hidden layer
+classifier.add(Dense(units = 256, init = 'uniform', activation = 'relu', input_dim = 623))
+# Ctrl + I para inspeccionar los argumentos de Dense
+# La elección de output_dim (nº de nodos) puede llegar a ser cuasi artística
+# Sin experiencia, tomar la media de los nodos de entrada y los de salida, en este caso (11+1)/2
+
+# Adding the second hidden layer
+classifier.add(Dense(units = 256, init = 'uniform', activation = 'relu'))
+
+# Adding the output layer
+classifier.add(Dense(units = 1, init = 'uniform', activation = 'relu'))
+# softmax sería la función de activación si hubiera más de dos categorías de salida
+
+# Compiling the ANN
+classifier.compile(optimizer = 'adam', loss = 'mean_squared_error', metrics = ['accuracy'])
+# classification_crossentropy sería la función de coste si hubiera más de dos categorías de salida
+
+# Fitting the ANN to the Training set
+classifier.fit(X_train1, y_train1, batch_size = 10, nb_epoch = 100)
+# nb_epoch cambiará a epochs
+
+# Part 3 - Making the predictions and evaluating the model
+
+# Predicting the Test set results
+y_pred = classifier.predict(X_train2)
+y_pred = (y_pred > 0.5)
+
+
+
+
+
+
+
+
+
 
 # Fitting SVR
 from sklearn.svm import SVR
